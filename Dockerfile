@@ -5,6 +5,7 @@
 # because chandra-ocr requires torch>=2.8.0 and the RunPod image ships 2.4.0.
 # Using nvidia/cuda as base avoids version conflicts entirely.
 # =============================================================================
+
 FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
 WORKDIR /app
@@ -30,21 +31,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
-# Upgrade pip
-RUN python3 -m pip install --no-cache-dir --upgrade pip --break-system-packages
+# Install pip for Python 3.11 (deadsnakes PPA doesn't include pip)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Step 1: Install PyTorch 2.8 + torchvision 0.23 WITH CUDA from official index
 # cu126 wheels work with CUDA 12.4 runtime (backwards-compatible)
-RUN pip install --no-cache-dir --break-system-packages \
+RUN pip install --no-cache-dir \
     torch==2.8.0 \
     torchvision==0.23.0 \
     --index-url https://download.pytorch.org/whl/cu126
 
 # Step 2: Install chandra-ocr WITHOUT its torch/torchvision deps
-RUN pip install --no-cache-dir --break-system-packages --no-deps chandra-ocr
+RUN pip install --no-cache-dir --no-deps chandra-ocr
 
 # Step 3: Install chandra-ocr's remaining dependencies manually
-RUN pip install --no-cache-dir --break-system-packages \
+RUN pip install --no-cache-dir \
     runpod \
     beautifulsoup4 \
     click \
@@ -63,7 +66,7 @@ RUN pip install --no-cache-dir --break-system-packages \
     accelerate
 
 # Step 4: flash-attn for 30-50% faster inference (needs CUDA devel image)
-RUN pip install --no-cache-dir --break-system-packages flash-attn
+RUN pip install --no-cache-dir flash-attn
 
 # Copy the handler
 COPY handler.py /app/handler.py
