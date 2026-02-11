@@ -1,9 +1,6 @@
 # =============================================================================
 # Dockerfile for Chandra OCR on RunPod Serverless
 # =============================================================================
-# We use a minimal CUDA devel image instead of RunPod's PyTorch image
-# because chandra-ocr requires torch>=2.8.0 and the RunPod image ships 2.4.0.
-# =============================================================================
 
 FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
@@ -36,14 +33,29 @@ RUN pip install --no-cache-dir \
     torchvision==0.23.0 \
     --index-url https://download.pytorch.org/whl/cu126
 
-# Step 2: Install chandra-ocr + runpod, pinning torch so pip won't touch it
-RUN echo "torch==2.8.0" > /tmp/constraints.txt && \
-    echo "torchvision==0.23.0" >> /tmp/constraints.txt && \
-    pip install --no-cache-dir -c /tmp/constraints.txt \
-    chandra-ocr \
-    runpod
+# Step 2: Install chandra-ocr without pulling its own torch/torchvision
+RUN pip install --no-cache-dir --no-deps chandra-ocr
 
-# Step 3: flash-attn for 30-50% faster inference
+# Step 3: Install remaining chandra-ocr deps one by one
+# (split so we can see exactly which one fails in build logs)
+RUN pip install --no-cache-dir "beautifulsoup4>=4.14.2"
+RUN pip install --no-cache-dir "click>=8.0.0"
+RUN pip install --no-cache-dir "filetype>=1.2.0"
+RUN pip install --no-cache-dir "flask>=3.0.0"
+RUN pip install --no-cache-dir "markdownify==1.1.0"
+RUN pip install --no-cache-dir "openai>=2.2.0"
+RUN pip install --no-cache-dir "pillow>=10.2.0"
+RUN pip install --no-cache-dir "pydantic>=2.12.0"
+RUN pip install --no-cache-dir "pydantic-settings>=2.11.0"
+RUN pip install --no-cache-dir "pypdfium2>=4.30.0"
+RUN pip install --no-cache-dir "python-dotenv>=1.1.1"
+RUN pip install --no-cache-dir "qwen-vl-utils>=0.0.14"
+RUN pip install --no-cache-dir "transformers>=4.57.1"
+RUN pip install --no-cache-dir "streamlit>=1.50.0"
+RUN pip install --no-cache-dir "accelerate>=1.11.0"
+RUN pip install --no-cache-dir runpod
+
+# Step 4: flash-attn for faster inference
 RUN pip install --no-cache-dir flash-attn
 
 # Copy the handler
