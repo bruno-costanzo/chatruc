@@ -1,0 +1,6 @@
+{
+    "input": {
+        "image_base64": "PUT_BASE64_ENCODED_IMAGE_HERE",
+        "prompt_type": "ocr_layout"
+    }
+}
