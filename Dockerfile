@@ -16,13 +16,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-# flash-attn speeds up inference 30-50% but needs the CUDA devel image (which we have)
+# Fix: blinker is pre-installed as a distutils package in the base image
+# and conflicts with newer versions. Force-reinstall it first.
+RUN pip install --no-cache-dir --force-reinstall blinker
+
+# Install chandra-ocr first, then fix torch/torchvision compatibility
+# The base image has PyTorch pre-installed but chandra-ocr may pull
+# an incompatible torchvision version.
 RUN pip install --no-cache-dir \
     runpod \
     chandra-ocr \
-    flash-attn \
     Pillow
+
+# Reinstall torchvision matching the base image's PyTorch version
+RUN pip install --no-cache-dir --force-reinstall torchvision --index-url https://download.pytorch.org/whl/cu124
+
+# flash-attn for 30-50% faster inference (optional but recommended)
+RUN pip install --no-cache-dir flash-attn
 
 # Copy the handler
 COPY handler.py /app/handler.py
